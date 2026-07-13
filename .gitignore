@@ -1,0 +1,24 @@
+# Azure Developer CLI
+.azure/
+
+# Local configuration and credentials
+.env
+.env.*
+!.env.sample
+
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Editors and operating systems
+.DS_Store
+*.swp
+
+# Fabric setup logs
+fabric_setup_*.log
