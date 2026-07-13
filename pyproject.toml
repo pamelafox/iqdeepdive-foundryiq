@@ -8,6 +8,7 @@ dependencies = [
     "azure-identity>=1.25.2",
     "azure-search-documents==12.1.0b1",
     "azure-storage-file-datalake>=12.23.0",
+    "ipykernel==7.2.0",
     "python-dotenv>=1.2.2",
     "requests>=2.33.0",
 ]
@@ -20,6 +21,9 @@ dev = [
 
 [tool.uv]
 package = false
+
+[tool.ty.environment]
+python = ".venv"
 
 [tool.ruff]
 extend-exclude = ["notebooks"]
