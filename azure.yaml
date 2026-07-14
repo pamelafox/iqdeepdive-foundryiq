@@ -32,6 +32,15 @@ services:
             - protocol: responses
               version: 2.0.0
 hooks:
+    postdeploy:
+        windows:
+            shell: pwsh
+            run: infra/hooks/postdeploy.ps1
+            interactive: true
+        posix:
+            shell: sh
+            run: infra/hooks/postdeploy.sh
+            interactive: true
     postprovision:
         windows:
             shell: pwsh
