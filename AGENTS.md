@@ -94,6 +94,8 @@ sh -n infra/hooks/postdeploy.sh
 azd hooks run postdeploy
 ```
 
+Use `azd hooks run postdeploy` to retry the postdeploy role-assignment step without rerunning provisioning or agent deployment. The hook uses `AzureDeveloperCliCredential` and requires the active azd environment to provide `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`, `AZURE_RESOURCE_GROUP`, and `AZURE_AI_SEARCH_SERVICE_NAME`. Confirm those values with `azd env get-value` before running the hook.
+
 Run either agent locally with the same service manifest:
 
 ```bash
