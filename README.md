@@ -115,6 +115,28 @@ users. On a caller's first Work IQ request, the agent returns an `oauth_consent_
 short-lived sign-in link. That user opens the link once and then retries the request. Each caller must
 complete this delegated OAuth authorization with their own Microsoft 365 identity.
 
+### Seed sample mailbox data
+
+To test Work IQ with predictable content, sign in to Outlook as the test user and send the following
+three fixture messages to that same user's email address:
+
+- [Urgent: Professional Claw Hammer out of stock at Seattle store](data/workiq-fixtures/urgent-professional-claw-hammer-out-of-stock.txt)
+- [RE: Weekly inventory report - Seattle flagged](data/workiq-fixtures/weekly-inventory-report-seattle-flagged.txt)
+- [Customer escalation - hammer unavailable again](data/workiq-fixtures/customer-escalation-hammer-unavailable.txt)
+
+Use the subject and body from each fixture. Because Outlook cannot impersonate the named colleague,
+prepend `Forwarded message from <name>, <role>` to the body rather than attempting to change the
+sender. Verify that all three messages appear in the test user's Inbox, then try:
+
+```text
+Check my recent emails for messages about the Professional Claw Hammer. Summarize what colleagues
+are saying and what actions have been requested.
+```
+
+Automated seeding through Microsoft Graph requires a dedicated Entra application with the
+admin-consented `Mail.Send` application permission. That broad permission is not granted by this
+project, so manual seeding is the recommended setup for a self-deployed test environment.
+
 ## Run the notebooks
 
 Install the notebook kernel into the root environment:
