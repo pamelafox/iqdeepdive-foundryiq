@@ -90,8 +90,8 @@ services:
         protocols:
             - protocol: responses
               version: 2.0.0
-    agent-foundry-iq-workiq-toolbox:
-        project: src/agent-foundry-iq-workiq-toolbox
+    agent-workiq-toolbox:
+        project: src/agent-workiq-toolbox
         host: azure.ai.agent
         language: python
         codeConfiguration:
@@ -108,7 +108,7 @@ services:
             - name: CUSTOM_FOUNDRY_WORKIQ_TOOLBOX_NAME
               value: ${CUSTOM_FOUNDRY_WORKIQ_TOOLBOX_NAME=work-iq-tools}
         kind: hosted
-        name: agent-foundry-iq-workiq-toolbox
+        name: agent-workiq-toolbox
         protocols:
             - protocol: responses
               version: 2.0.0

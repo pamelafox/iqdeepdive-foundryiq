@@ -18,7 +18,7 @@ AGENT_NAMES = (
     "agent-foundry-iq-api",
     "agent-foundry-iq-toolbox",
 )
-WORK_IQ_AGENT_NAME = "agent-foundry-iq-workiq-toolbox"
+WORK_IQ_AGENT_NAME = "agent-workiq-toolbox"
 
 
 def get_agent_principal_id(agent_name: str) -> str | None:

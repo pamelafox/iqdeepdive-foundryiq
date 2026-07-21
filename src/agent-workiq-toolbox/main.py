@@ -13,7 +13,7 @@ from workiq_consent import enable_work_iq_consent_handling
 
 load_dotenv(dotenv_path=".env", override=True)
 
-logger = logging.getLogger("agent-foundry-iq-workiq-toolbox")
+logger = logging.getLogger("agent-workiq-toolbox")
 
 PROJECT_ENDPOINT = os.environ["FOUNDRY_PROJECT_ENDPOINT"]
 MODEL_DEPLOYMENT_NAME = os.environ["AZURE_AI_MODEL_DEPLOYMENT_NAME"]

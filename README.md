@@ -46,7 +46,7 @@ Microsoft 365 work context through Work IQ.
   with the `azure.ai.agents` and `azure.ai.connections` extensions available
 - [uv](https://docs.astral.sh/uv/getting-started/installation/) and Python 3.12+
 - Quota in one region for Foundry hosted agents, `gpt-5.4`, and `text-embedding-3-large`
-- For notebook parts 3 and 5, a Fabric-capable tenant and a Fabric/Power BI license (or active Fabric
+- For notebook parts 3, 5, and 6, a Fabric-capable tenant and a Fabric/Power BI license (or active Fabric
   trial) assigned to the account used by `az login`; the default deployment creates an F2 capacity
 - For the Fabric toolbox agent, the same Fabric license and ontology access assigned to the account
   used by `azd auth login`; its `user-entra-token` connection uses the invoking user's permissions
@@ -72,8 +72,8 @@ targets the generated ontology endpoint exactly and uses the `fabric-ontology-co
 connection. No Azure resources are included in this repository.
 
 Set `DEPLOY_FABRIC_CAPACITY=false` before `azd up` to use an existing Fabric workspace or skip the
-Fabric portions. Set `FABRIC_WORKSPACE_ID` and `FABRIC_ONTOLOGY_ID` in `.env` before running parts 3
-and 5 when you manage Fabric separately.
+Fabric portions. Set `FABRIC_WORKSPACE_ID` and `FABRIC_ONTOLOGY_ID` in `.env` before running parts 3,
+5, and 6 when you manage Fabric separately.
 
 Query the published Fabric Data Agent through its MCP endpoint after Fabric setup completes:
 
@@ -163,11 +163,15 @@ uv pip install --python .venv/bin/python -r notebooks/requirements.txt
 Add the externally supplied `WEB_IQ_KEY` to `.env` for part 2. Then open `notebooks/` in VS Code,
 select `.venv/bin/python`, and run these in order:
 
-1. `part1-standard-foundry-iq-kb.ipynb`
-2. `part2-search-mcp-kb.ipynb`
-3. `part3-fabric-iq-to-kb.ipynb`
-4. `part4-work-iq-to-kb.ipynb`
-5. `part5-work-iq-fabric-iq-to-kb.ipynb`
+1. `foundryiq-basic.ipynb`
+2. `foundryiq-webiq.ipynb`
+3. `foundryiq-fabriciq.ipynb`
+4. `foundryiq-workiq.ipynb`
+5. `foundryiq-workiq-fabriciq.ipynb`
+6. `foundryiq-fabricdataagent.ipynb`
+
+Part 6 combines the HR and health indexes with the published Fabric Data Agent in a multi-source
+knowledge base. It uses the signed-in user's delegated identity to query the protected Fabric source.
 
 ## Run and invoke the HR agents
 
@@ -186,7 +190,7 @@ azd ai agent invoke --local "What benefits are available, and when do I need to 
 azd ai agent run agent-foundry-iq-fabric-toolbox
 azd ai agent invoke --local "Which product categories have the lowest stock levels right now?"
 
-azd ai agent run agent-foundry-iq-workiq-toolbox
+azd ai agent run agent-workiq-toolbox
 azd ai agent invoke --local \
   "Check my recent Teams chats for messages about the Professional Claw Hammer. Summarize what colleagues are saying and what actions have been requested."
 ```
@@ -208,8 +212,8 @@ azd ai agent invoke agent-foundry-iq-fabric-toolbox \
   --new-session --new-conversation \
   "Which product categories have the lowest stock levels right now?"
 
-azd deploy agent-foundry-iq-workiq-toolbox
-azd ai agent invoke agent-foundry-iq-workiq-toolbox \
+azd deploy agent-workiq-toolbox
+azd ai agent invoke agent-workiq-toolbox \
   --new-session --new-conversation \
   "Check my recent Teams chats for messages about the Professional Claw Hammer. Summarize what colleagues are saying and what actions have been requested."
 ```
@@ -223,7 +227,7 @@ container registry and image-build path.
 ```bash
 uv sync --locked --all-groups
 uv run ruff check .
-uv run python -m compileall -q infra src/agent-foundry-iq-mcp src/agent-foundry-iq-api src/agent-foundry-iq-toolbox src/agent-foundry-iq-fabric-toolbox src/agent-foundry-iq-workiq-toolbox
+uv run python -m compileall -q infra src/agent-foundry-iq-mcp src/agent-foundry-iq-api src/agent-foundry-iq-toolbox src/agent-foundry-iq-fabric-toolbox src/agent-workiq-toolbox
 uv run python scripts/check_repo.py
 az bicep build --file infra/main.bicep --stdout > /dev/null
 azd show

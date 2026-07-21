@@ -5,7 +5,7 @@ agents, read the `microsoft-foundry` skill first.
 
 ## Project overview
 
-This repository contains a six-part Microsoft Foundry IQ notebook lab and five Python agents deployed as
+This repository contains a five-part Microsoft Foundry IQ notebook lab and five Python agents deployed as
 Microsoft Foundry hosted agents. A single Azure Developer CLI (`azd`) project provisions the shared Foundry project,
 model deployments, Azure AI Search, storage, monitoring, and optional Microsoft Fabric capacity.
 
@@ -15,7 +15,7 @@ The notebooks and hosted agents share infrastructure but create separate knowled
 `agent-foundry-iq-toolbox` connects through a Foundry toolbox.
 `agent-foundry-iq-fabric-toolbox` uses a separate toolbox and a delegated-user connection to the Fabric IQ ontology
 created by `infra/create-lakehouse.py`.
-`agent-foundry-iq-workiq-toolbox` uses a separate OAuth2 `RemoteA2A` connection and toolbox to access the signed-in
+`agent-workiq-toolbox` uses a separate OAuth2 `RemoteA2A` connection and toolbox to access the signed-in
 user's Microsoft 365 work context through Work IQ.
 
 ## Repository map
@@ -52,10 +52,8 @@ user's Microsoft 365 work context through Work IQ.
   hosted-agent identity, and grant it `Search Index Data Contributor` on Azure AI Search.
 - `scripts/query-fabric-data-agent.py`: authenticates to the published Fabric Data Agent MCP endpoint, discovers
   its tool, and submits a question from the command line.
-- `notebooks/`: the six Foundry IQ lab notebooks. Their extra kernel dependencies are listed in
+- `notebooks/`: the five ordered Foundry IQ lab notebooks. Their extra kernel dependencies are listed in
   `notebooks/requirements.txt`.
-- `notebooks/foundryiq-fabricdataagent.ipynb`: creates a multi-source knowledge base that combines the HR and
-  health indexes with the published Fabric Data Agent through the preview Fabric Data Agent knowledge source.
 - `src/agent-foundry-iq-mcp/main.py`: Agent Framework application. It exposes a Responses server, uses Foundry for chat, and
   connects to the Search knowledge base with an authenticated `MCPStreamableHTTPTool`.
 - `src/agent-foundry-iq-api/main.py`: sibling Agent Framework application whose custom Python tool calls the Azure AI Search
@@ -64,7 +62,7 @@ user's Microsoft 365 work context through Work IQ.
   web search, and code interpreter through `FoundryToolbox`.
 - `src/agent-foundry-iq-fabric-toolbox/main.py`: sibling Agent Framework application that accesses product and
   inventory data through the Fabric IQ ontology toolbox.
-- `src/agent-foundry-iq-workiq-toolbox/main.py`: sibling Agent Framework application that accesses the signed-in
+- `src/agent-workiq-toolbox/main.py`: sibling Agent Framework application that accesses the signed-in
   user's Microsoft 365 work context through the Work IQ toolbox.
 - `src/agent-foundry-iq-mcp/pyproject.toml`, `src/agent-foundry-iq-mcp/uv.lock`, and `src/agent-foundry-iq-mcp/uv.toml`: isolated MCP agent dependency
   definition, lockfile, and remote-build TLS configuration.
@@ -76,8 +74,8 @@ user's Microsoft 365 work context through Work IQ.
 - `src/agent-foundry-iq-fabric-toolbox/pyproject.toml`, `src/agent-foundry-iq-fabric-toolbox/uv.lock`, and
   `src/agent-foundry-iq-fabric-toolbox/uv.toml`: isolated Fabric toolbox agent dependency definition, lockfile, and
   remote-build TLS configuration.
-- `src/agent-foundry-iq-workiq-toolbox/pyproject.toml`, `src/agent-foundry-iq-workiq-toolbox/uv.lock`, and
-  `src/agent-foundry-iq-workiq-toolbox/uv.toml`: isolated Work IQ agent dependency definition, lockfile, and
+- `src/agent-workiq-toolbox/pyproject.toml`, `src/agent-workiq-toolbox/uv.lock`, and
+  `src/agent-workiq-toolbox/uv.toml`: isolated Work IQ agent dependency definition, lockfile, and
   remote-build TLS configuration.
 
 ## Development guidance
@@ -139,7 +137,7 @@ Install and validate root tooling:
 ```bash
 uv sync --locked --all-groups
 uv run ruff check .
-uv run python -m compileall -q infra src/agent-foundry-iq-mcp src/agent-foundry-iq-api src/agent-foundry-iq-toolbox src/agent-foundry-iq-fabric-toolbox src/agent-foundry-iq-workiq-toolbox
+uv run python -m compileall -q infra src/agent-foundry-iq-mcp src/agent-foundry-iq-api src/agent-foundry-iq-toolbox src/agent-foundry-iq-fabric-toolbox src/agent-workiq-toolbox
 az bicep build --file infra/main.bicep --stdout > /dev/null
 azd show
 ```
@@ -155,8 +153,8 @@ uv sync --project src/agent-foundry-iq-toolbox --python 3.13 --frozen --dry-run
 uv run --project src/agent-foundry-iq-toolbox --python 3.13 python -m py_compile src/agent-foundry-iq-toolbox/main.py
 uv sync --project src/agent-foundry-iq-fabric-toolbox --python 3.13 --frozen --dry-run
 uv run --project src/agent-foundry-iq-fabric-toolbox --python 3.13 python -m py_compile src/agent-foundry-iq-fabric-toolbox/main.py
-uv sync --project src/agent-foundry-iq-workiq-toolbox --python 3.13 --frozen --dry-run
-uv run --project src/agent-foundry-iq-workiq-toolbox --python 3.13 python -m py_compile src/agent-foundry-iq-workiq-toolbox/main.py
+uv sync --project src/agent-workiq-toolbox --python 3.13 --frozen --dry-run
+uv run --project src/agent-workiq-toolbox --python 3.13 python -m py_compile src/agent-workiq-toolbox/main.py
 ```
 
 Validate deployment hooks after editing them:
@@ -183,7 +181,7 @@ azd ai agent invoke --local "What benefits are available, and when do I need to 
 azd ai agent run agent-foundry-iq-fabric-toolbox
 azd ai agent invoke --local "Which product categories have the lowest stock levels right now?"
 
-azd ai agent run agent-foundry-iq-workiq-toolbox
+azd ai agent run agent-workiq-toolbox
 azd ai agent invoke --local \
   "Check my recent Teams chats for messages about the Professional Claw Hammer. Summarize what colleagues are saying and what actions have been requested."
 ```
@@ -213,8 +211,8 @@ azd deploy agent-foundry-iq-fabric-toolbox
 azd ai agent invoke agent-foundry-iq-fabric-toolbox --new-session --new-conversation \
   "Which product categories have the lowest stock levels right now?"
 
-azd deploy agent-foundry-iq-workiq-toolbox
-azd ai agent invoke agent-foundry-iq-workiq-toolbox --new-session --new-conversation \
+azd deploy agent-workiq-toolbox
+azd ai agent invoke agent-workiq-toolbox --new-session --new-conversation \
   "Check my recent Teams chats for messages about the Professional Claw Hammer. Summarize what colleagues are saying and what actions have been requested."
 ```
 
@@ -252,8 +250,8 @@ uv sync --project src/agent-foundry-iq-toolbox --python 3.13 --frozen --dry-run
 uv lock --project src/agent-foundry-iq-fabric-toolbox --python 3.13
 uv sync --project src/agent-foundry-iq-fabric-toolbox --python 3.13 --frozen --dry-run
 
-uv lock --project src/agent-foundry-iq-workiq-toolbox --python 3.13
-uv sync --project src/agent-foundry-iq-workiq-toolbox --python 3.13 --frozen --dry-run
+uv lock --project src/agent-workiq-toolbox --python 3.13
+uv sync --project src/agent-workiq-toolbox --python 3.13 --frozen --dry-run
 ```
 
 ### Missing runtime setting

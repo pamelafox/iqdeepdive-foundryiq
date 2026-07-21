@@ -1,5 +1,5 @@
 [project]
-name = "foundry-iq-workiq-toolbox-agent"
+name = "workiq-toolbox-agent"
 version = "0.1.0"
 description = "Agent Framework workplace assistant using a Work IQ Foundry toolbox"
 requires-python = ">=3.12"
