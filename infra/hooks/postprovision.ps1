@@ -13,6 +13,9 @@ if ($env:FABRIC_CAPACITY_ID -or $env:FABRIC_WORKSPACE_ID) {
     Write-Host "Creating the optional Fabric lakehouse and ontology..."
     uv run --locked python infra/create-lakehouse.py
 
+    Write-Host "Creating the Fabric data agent..."
+    uv run --locked python infra/create-fabric-data-agent.py
+
     Write-Host "Creating the Fabric IQ toolbox..."
     uv run --locked python infra/create-fabric-toolbox.py
 }

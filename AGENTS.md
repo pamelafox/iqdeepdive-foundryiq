@@ -38,6 +38,8 @@ user's Microsoft 365 work context through Work IQ.
   `contoso-company-kb`.
 - `infra/create-toolbox.py`: creates and promotes the toolbox version after the knowledge base exists. It uses the
   dedicated `kb-mcp-connection` remote-tool project connection by default.
+- `infra/create-fabric-data-agent.py`: creates or reuses an ontology-backed Fabric Data Agent, publishes its
+  staging configuration through the Fabric REST API, and writes its ID and MCP endpoint to `.env`.
 - `infra/create-fabric-toolbox.py`: creates the `user-entra-token` Fabric ontology connection after the ontology
   exists, then creates and promotes the separate Fabric IQ toolbox.
 - `infra/create-workiq-toolbox.py`: opt-in Graph SDK setup for the Work IQ service principal, single-tenant Entra
@@ -48,6 +50,8 @@ user's Microsoft 365 work context through Work IQ.
   write local settings, seed Search, and optionally prepare Fabric.
 - `infra/hooks/postdeploy.sh` and `infra/hooks/postdeploy.ps1`: run after agent deployment, resolve the generated
   hosted-agent identity, and grant it `Search Index Data Contributor` on Azure AI Search.
+- `scripts/query-fabric-data-agent.py`: authenticates to the published Fabric Data Agent MCP endpoint, discovers
+  its tool, and submits a question from the command line.
 - `notebooks/`: the five ordered Foundry IQ lab notebooks. Their extra kernel dependencies are listed in
   `notebooks/requirements.txt`.
 - `src/agent-foundry-iq-mcp/main.py`: Agent Framework application. It exposes a Responses server, uses Foundry for chat, and
@@ -91,6 +95,25 @@ Keep changes scoped to the owning environment:
 The MCP server requires authentication during `session.initialize()`. Attach Azure bearer authentication to the
 supplied `httpx.AsyncClient`; do not replace it with only `header_provider`, which applies runtime tool-call headers
 too late for initialization.
+
+## Fabric Data Agent SDK limitations
+
+`infra/create-fabric-data-agent.py` intentionally uses the Fabric REST API with the root Python environment instead
+of `fabric-data-agent-sdk`. Reconsider the SDK when both of these preview limitations are fixed:
+
+- `fabric-data-agent-sdk==0.1.26a0` pins `azure-identity==1.17.1` and `httpx==0.27.2`, which conflicts with this
+  repository's newer root dependencies.
+- The SDK's public management objects resolve workspaces and item names through Semantic Link. Outside a Fabric
+  notebook, create and reuse paths can initialize Semantic Link's .NET workspace client and fail with
+  `RuntimeError: Can not determine dotnet root`.
+
+The package metadata points to the internal `A365/SynapseML-Agent-SDK` Azure DevOps repository and does not publish
+a public issue tracker. Check newer package metadata and release notes before restoring an SDK dependency.
+
+The Fabric Data Agent MCP endpoint redirects requests through Fabric's routing layer. Its MCP client must use an
+HTTP client with redirects enabled before `session.initialize()`; a plain `httpx.AsyncClient` defaults to
+`follow_redirects=False` and can surface a misleading `500 Internal Server Error`. The current MCP client works and
+negotiates the endpoint's supported protocol version when `follow_redirects=True`.
 
 ## Upstream Agent Framework issues
 

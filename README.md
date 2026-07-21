@@ -20,6 +20,8 @@ flowchart LR
   toolbox --> toolboxagent[Hosted toolbox HR agent]
   search --> notebooks[Five notebook-created KBs]
   fabric --> notebooks
+  fabric --> fabricdataagent[Fabric Data Agent]
+  fabricdataagent -->|Published MCP endpoint| clients[MCP clients]
   fabric --> fabrictoolbox[Fabric IQ toolbox]
   fabrictoolbox --> fabricagent[Hosted inventory agent]
   m365[Microsoft 365] --> workiq[Work IQ A2A]
@@ -63,13 +65,25 @@ azd up
 
 `azd up` provisions the resources, writes the generated local settings to `.env`, restores the
 sample HR and health indexes, creates the independent HR agent knowledge base and Foundry toolbox,
-prepares Fabric when enabled, creates a separate `fabric-ontology-tools` toolbox, and deploys all five
-agents. The Fabric toolbox targets the generated ontology endpoint exactly and uses the
-`fabric-ontology-connection` remote-tool connection. No Azure resources are included in this repository.
+prepares Fabric when enabled, creates and publishes an ontology-backed Fabric Data Agent, creates a
+separate `fabric-ontology-tools` toolbox, and deploys all five agents. The Fabric Data Agent's ID and
+MCP endpoint are written to `FABRIC_DATA_AGENT_ID` and `FABRIC_DATA_AGENT_MCP_URL`. The Fabric toolbox
+targets the generated ontology endpoint exactly and uses the `fabric-ontology-connection` remote-tool
+connection. No Azure resources are included in this repository.
 
 Set `DEPLOY_FABRIC_CAPACITY=false` before `azd up` to use an existing Fabric workspace or skip the
 Fabric portions. Set `FABRIC_WORKSPACE_ID` and `FABRIC_ONTOLOGY_ID` in `.env` before running parts 3
 and 5 when you manage Fabric separately.
+
+Query the published Fabric Data Agent through its MCP endpoint after Fabric setup completes:
+
+```bash
+uv run --locked python scripts/query-fabric-data-agent.py \
+  "Which products currently have the lowest inventory quantities?"
+```
+
+The script reads `FABRIC_TENANT_ID` and `FABRIC_DATA_AGENT_MCP_URL` from `.env`. Use `--mcp-url` to target a
+different Fabric Data Agent endpoint.
 
 ### Enable Work IQ retrieval for Azure AI Search
 
