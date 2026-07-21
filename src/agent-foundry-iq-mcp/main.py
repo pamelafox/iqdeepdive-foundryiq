@@ -13,11 +13,7 @@ from agent_framework.observability import enable_instrumentation
 from agent_framework_foundry_hosting import ResponsesHostServer
 from agent_framework_openai import OpenAIContentFilterException
 from azure.core.credentials import TokenCredential
-from azure.identity import (
-    AzureDeveloperCliCredential,
-    ChainedTokenCredential,
-    ManagedIdentityCredential,
-)
+from azure.identity import AzureDeveloperCliCredential, ManagedIdentityCredential
 from dotenv import load_dotenv
 
 load_dotenv(dotenv_path=".env", override=True)
@@ -86,12 +82,14 @@ async def content_filter_middleware(
 
 async def main() -> None:
     """Main function to run the agent as a web server."""
-    managed_identity_credential = ManagedIdentityCredential()
-    azure_dev_cli_credential = AzureDeveloperCliCredential(
-        tenant_id=os.getenv("AZURE_TENANT_ID"),
-        process_timeout=60,
+    credential = (
+        ManagedIdentityCredential()
+        if "FOUNDRY_HOSTING_ENVIRONMENT" in os.environ
+        else AzureDeveloperCliCredential(
+            tenant_id=os.environ["AZURE_TENANT_ID"],
+            process_timeout=60,
+        )
     )
-    credential = ChainedTokenCredential(managed_identity_credential, azure_dev_cli_credential)
 
     knowledge_base_endpoint = (
         f"{SEARCH_ENDPOINT.rstrip('/')}/knowledgebases/{KNOWLEDGE_BASE_NAME}"

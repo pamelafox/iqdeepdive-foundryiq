@@ -15,7 +15,6 @@ from agent_framework_openai import OpenAIContentFilterException
 from azure.identity.aio import (
     AzureDeveloperCliCredential as AsyncAzureDeveloperCliCredential,
 )
-from azure.identity.aio import ChainedTokenCredential as AsyncChainedTokenCredential
 from azure.identity.aio import ManagedIdentityCredential as AsyncManagedIdentityCredential
 from azure.search.documents.knowledgebases.aio import KnowledgeBaseRetrievalClient
 from azure.search.documents.knowledgebases.models import (
@@ -78,15 +77,13 @@ def serialize_models(models: list[Any] | None) -> list[dict[str, Any]]:
 
 async def main() -> None:
     """Run the API-backed agent as a Responses server."""
-    tenant_id = os.getenv("AZURE_TENANT_ID")
-    async_azure_dev_cli_credential = (
-        AsyncAzureDeveloperCliCredential(tenant_id=tenant_id, process_timeout=60)
-        if tenant_id
-        else AsyncAzureDeveloperCliCredential(process_timeout=60)
-    )
-    credential = AsyncChainedTokenCredential(
-        AsyncManagedIdentityCredential(),
-        async_azure_dev_cli_credential,
+    credential = (
+        AsyncManagedIdentityCredential()
+        if "FOUNDRY_HOSTING_ENVIRONMENT" in os.environ
+        else AsyncAzureDeveloperCliCredential(
+            tenant_id=os.environ["AZURE_TENANT_ID"],
+            process_timeout=60,
+        )
     )
     knowledge_base_client = KnowledgeBaseRetrievalClient(
         endpoint=SEARCH_ENDPOINT,

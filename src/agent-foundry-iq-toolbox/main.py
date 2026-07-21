@@ -10,11 +10,7 @@ from agent_framework.foundry import FoundryChatClient
 from agent_framework.observability import enable_instrumentation
 from agent_framework_foundry_hosting import FoundryToolbox, ResponsesHostServer
 from agent_framework_openai import OpenAIContentFilterException
-from azure.identity import (
-    AzureDeveloperCliCredential,
-    ChainedTokenCredential,
-    ManagedIdentityCredential,
-)
+from azure.identity import AzureDeveloperCliCredential, ManagedIdentityCredential
 from dotenv import load_dotenv
 
 load_dotenv(dotenv_path=".env", override=True)
@@ -63,12 +59,13 @@ async def content_filter_middleware(
 
 def main() -> None:
     """Run the toolbox-backed agent as a Responses server."""
-    credential = ChainedTokenCredential(
-        ManagedIdentityCredential(),
-        AzureDeveloperCliCredential(
-            tenant_id=os.getenv("AZURE_TENANT_ID"),
+    credential = (
+        ManagedIdentityCredential()
+        if "FOUNDRY_HOSTING_ENVIRONMENT" in os.environ
+        else AzureDeveloperCliCredential(
+            tenant_id=os.environ["AZURE_TENANT_ID"],
             process_timeout=60,
-        ),
+        )
     )
     toolbox_endpoint = (
         f"{PROJECT_ENDPOINT.rstrip('/')}/toolboxes/{TOOLBOX_NAME}/mcp?api-version=v1"

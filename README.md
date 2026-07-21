@@ -1,6 +1,6 @@
 # Foundry IQ deep dive
 
-This repository combines a five-part Microsoft Foundry IQ notebook lab with five deployable
+This repository combines a six-part Microsoft Foundry IQ notebook lab with five deployable
 [Microsoft Agent Framework](https://learn.microsoft.com/agent-framework/) agents. One `azd`
 project provisions the shared Foundry project, `gpt-5.4` and `text-embedding-3-large` deployments,
 Azure AI Search, storage, monitoring, and an optional F2 Fabric capacity. It then prepares Search
@@ -18,7 +18,7 @@ flowchart LR
   agentkb -->|Python retrieval API tool| apiagent[Hosted API HR agent]
   agentkb --> toolbox[Foundry toolbox]
   toolbox --> toolboxagent[Hosted toolbox HR agent]
-  search --> notebooks[Five notebook-created KBs]
+  search --> notebooks[Six notebook-created KBs]
   fabric --> notebooks
   fabric --> fabricdataagent[Fabric Data Agent]
   fabricdataagent -->|Published MCP endpoint| clients[MCP clients]

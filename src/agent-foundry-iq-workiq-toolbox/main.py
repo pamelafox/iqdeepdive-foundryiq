@@ -7,11 +7,7 @@ from agent_framework import Agent
 from agent_framework.foundry import FoundryChatClient
 from agent_framework.observability import enable_instrumentation
 from agent_framework_foundry_hosting import FoundryToolbox, ResponsesHostServer
-from azure.identity import (
-    AzureDeveloperCliCredential,
-    ChainedTokenCredential,
-    ManagedIdentityCredential,
-)
+from azure.identity import AzureDeveloperCliCredential, ManagedIdentityCredential
 from dotenv import load_dotenv
 from workiq_consent import enable_work_iq_consent_handling
 
@@ -29,15 +25,13 @@ TOOLBOX_NAME = os.environ.get(
 def main() -> None:
     """Run the Work IQ toolbox-backed agent as a Responses server."""
     enable_work_iq_consent_handling()
-    tenant_id = os.getenv("AZURE_TENANT_ID")
-    azure_developer_cli_credential = (
-        AzureDeveloperCliCredential(tenant_id=tenant_id, process_timeout=60)
-        if tenant_id
-        else AzureDeveloperCliCredential(process_timeout=60)
-    )
-    credential = ChainedTokenCredential(
-        ManagedIdentityCredential(),
-        azure_developer_cli_credential,
+    credential = (
+        ManagedIdentityCredential()
+        if "FOUNDRY_HOSTING_ENVIRONMENT" in os.environ
+        else AzureDeveloperCliCredential(
+            tenant_id=os.environ["AZURE_TENANT_ID"],
+            process_timeout=60,
+        )
     )
     toolbox_endpoint = (
         f"{PROJECT_ENDPOINT.rstrip('/')}/toolboxes/{TOOLBOX_NAME}/mcp?api-version=v1"

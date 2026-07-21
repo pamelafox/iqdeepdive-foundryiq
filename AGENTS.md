@@ -5,7 +5,7 @@ agents, read the `microsoft-foundry` skill first.
 
 ## Project overview
 
-This repository contains a five-part Microsoft Foundry IQ notebook lab and five Python agents deployed as
+This repository contains a six-part Microsoft Foundry IQ notebook lab and five Python agents deployed as
 Microsoft Foundry hosted agents. A single Azure Developer CLI (`azd`) project provisions the shared Foundry project,
 model deployments, Azure AI Search, storage, monitoring, and optional Microsoft Fabric capacity.
 
@@ -52,8 +52,10 @@ user's Microsoft 365 work context through Work IQ.
   hosted-agent identity, and grant it `Search Index Data Contributor` on Azure AI Search.
 - `scripts/query-fabric-data-agent.py`: authenticates to the published Fabric Data Agent MCP endpoint, discovers
   its tool, and submits a question from the command line.
-- `notebooks/`: the five ordered Foundry IQ lab notebooks. Their extra kernel dependencies are listed in
+- `notebooks/`: the six Foundry IQ lab notebooks. Their extra kernel dependencies are listed in
   `notebooks/requirements.txt`.
+- `notebooks/foundryiq-fabricdataagent.ipynb`: creates a multi-source knowledge base that combines the HR and
+  health indexes with the published Fabric Data Agent through the preview Fabric Data Agent knowledge source.
 - `src/agent-foundry-iq-mcp/main.py`: Agent Framework application. It exposes a Responses server, uses Foundry for chat, and
   connects to the Search knowledge base with an authenticated `MCPStreamableHTTPTool`.
 - `src/agent-foundry-iq-api/main.py`: sibling Agent Framework application whose custom Python tool calls the Azure AI Search
