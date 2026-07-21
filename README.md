@@ -1,6 +1,6 @@
 # Foundry IQ deep dive
 
-This repository combines a six-part Microsoft Foundry IQ notebook lab with five deployable
+This repository combines a six-part Microsoft Foundry IQ notebook lab with six deployable
 [Microsoft Agent Framework](https://learn.microsoft.com/agent-framework/) agents. One `azd`
 project provisions the shared Foundry project, `gpt-5.4` and `text-embedding-3-large` deployments,
 Azure AI Search, storage, monitoring, and an optional F2 Fabric capacity. It then prepares Search
@@ -27,6 +27,9 @@ flowchart LR
   m365[Microsoft 365] --> workiq[Work IQ A2A]
   workiq --> workiqtoolbox[Work IQ toolbox]
   workiqtoolbox --> workiqagent[Hosted workplace agent]
+  search --> workiqkb[Work IQ multi-source KB]
+  workiqkb --> workiqkbtoolbox[Foundry IQ toolbox]
+  workiqkbtoolbox --> workiqkbagent[Hosted Work IQ KB agent]
 ```
 
 The examples intentionally remain independent. The notebooks create learning-path knowledge bases.
@@ -38,6 +41,10 @@ agent uses a separate toolbox connected directly to the Fabric IQ ontology used 
 notebook-created knowledge base.
 The fifth agent uses a separate OAuth2 `RemoteA2A` connection and toolbox to query the signed-in user's
 Microsoft 365 work context through Work IQ.
+The sixth agent uses a Foundry toolbox connected to a provisioned multi-source Work IQ knowledge base.
+The connection authenticates to Search with the project managed identity;
+Toolbox supplies the signed-in user's Search token as query-source authorization so the knowledge base
+can call its Work IQ knowledge source.
 
 ## Prerequisites
 
@@ -66,7 +73,7 @@ azd up
 `azd up` provisions the resources, writes the generated local settings to `.env`, restores the
 sample HR and health indexes, creates the independent HR agent knowledge base and Foundry toolbox,
 prepares Fabric when enabled, creates and publishes an ontology-backed Fabric Data Agent, creates a
-separate `fabric-ontology-tools` toolbox, and deploys all five agents. The Fabric Data Agent's ID and
+separate `fabric-ontology-tools` toolbox, and deploys all six agents. The Fabric Data Agent's ID and
 MCP endpoint are written to `FABRIC_DATA_AGENT_ID` and `FABRIC_DATA_AGENT_MCP_URL`. The Fabric toolbox
 targets the generated ontology endpoint exactly and uses the `fabric-ontology-connection` remote-tool
 connection. No Azure resources are included in this repository.
@@ -107,6 +114,31 @@ role holder and Entra administrator can be different people. Wait for Microsoft 
 before running the Work IQ notebooks. See
 [Request access to Work IQ retrieval](https://learn.microsoft.com/azure/search/agentic-knowledge-source-how-to-work-iq#request-access-to-work-iq-retrieval)
 for the current requirements.
+
+### Enable the hosted Foundry IQ Work IQ agent
+
+Enable the Work IQ knowledge-base and Toolbox creation hook, then rerun provisioning:
+
+```bash
+azd env set ENABLE_WORK_IQ_KB_TOOLBOX true
+azd provision
+azd deploy agent-foundryiq-workiq-toolbox
+azd ai agent invoke agent-foundryiq-workiq-toolbox \
+  --new-session --new-conversation \
+  "Search my recent emails for Professional Claw Hammer and summarize requested actions. Use the knowledge base and its Work IQ source."
+```
+
+Postprovision creates `workiq-knowledge-source`, combines it with the shared HR and health index
+sources in `multisource-workiq-knowledge-base`, and publishes `workiq-knowledge-tools`. The notebook
+`foundryiq-workiq.ipynb` remains an independent walkthrough of the same Search configuration and is
+not required to deploy the agent.
+
+The dedicated `workiq-kb-mcp-connection` must target the same knowledge-base MCP URL used by the
+Toolbox tool. Do not reuse `kb-mcp-connection`, whose target is `contoso-company-kb`. Toolbox uses the
+matching Foundry IQ connection to authenticate Search with the project managed identity and emit the
+signed-in user's Search-scoped token as `x-ms-query-source-authorization` for Work IQ retrieval.
+Invoke this agent through its deployed endpoint: local runs do not receive the hosted platform's
+`x-agent-foundry-call-id`, so Toolbox cannot resolve the signed-in caller for Work IQ retrieval.
 
 ### Enable the hosted Work IQ toolbox agent
 
@@ -207,6 +239,11 @@ azd ai agent invoke agent-foundry-iq-api "What benefits are available, and when 
 azd deploy agent-foundry-iq-toolbox
 azd ai agent invoke agent-foundry-iq-toolbox "What benefits are available, and when do I need to enroll?"
 
+azd deploy agent-foundryiq-workiq-toolbox
+azd ai agent invoke agent-foundryiq-workiq-toolbox \
+  --new-session --new-conversation \
+  "Search my recent emails for Professional Claw Hammer and summarize requested actions. Use the knowledge base and its Work IQ source."
+
 azd deploy agent-foundry-iq-fabric-toolbox
 azd ai agent invoke agent-foundry-iq-fabric-toolbox \
   --new-session --new-conversation \
@@ -227,7 +264,7 @@ container registry and image-build path.
 ```bash
 uv sync --locked --all-groups
 uv run ruff check .
-uv run python -m compileall -q infra src/agent-foundry-iq-mcp src/agent-foundry-iq-api src/agent-foundry-iq-toolbox src/agent-foundry-iq-fabric-toolbox src/agent-workiq-toolbox
+uv run python -m compileall -q infra src/agent-foundry-iq-mcp src/agent-foundry-iq-api src/agent-foundry-iq-toolbox src/agent-foundryiq-workiq-toolbox src/agent-foundry-iq-fabric-toolbox src/agent-workiq-toolbox
 uv run python scripts/check_repo.py
 az bicep build --file infra/main.bicep --stdout > /dev/null
 azd show

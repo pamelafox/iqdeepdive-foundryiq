@@ -1,5 +1,6 @@
 """Create Azure AI Search indexes and upload sample data for Foundry IQ demos."""
 
+import argparse
 import asyncio
 import json
 import os
@@ -20,8 +21,12 @@ from azure.search.documents.indexes.models import (
     SearchIndexFieldReference,
     SearchIndexKnowledgeSource,
     SearchIndexKnowledgeSourceParameters,
+    WorkIQKnowledgeSource,
 )
-from azure.search.documents.knowledgebases.models import KnowledgeRetrievalOutputMode
+from azure.search.documents.knowledgebases.models import (
+    KnowledgeRetrievalLowReasoningEffort,
+    KnowledgeRetrievalOutputMode,
+)
 from dotenv import load_dotenv
 
 load_dotenv(dotenv_path=".env", override=True)
@@ -143,11 +148,69 @@ async def create_knowledge_base(
         print(f"Created knowledge base: {kb_name} with {len(source_refs)} knowledge sources")
 
 
-async def main_async() -> int:
+async def create_workiq_knowledge_base(
+    endpoint: str,
+    credential: Any,
+    kb_name: str,
+    openai_endpoint: str,
+    openai_model_deployment: str,
+    openai_model_name: str,
+) -> None:
+    """Create the Work IQ source and multi-source knowledge base used by the hosted agent."""
+    workiq_source_name = "workiq-knowledge-source"
+    async with SearchIndexClient(endpoint=endpoint, credential=credential) as index_client:
+        await index_client.create_or_update_knowledge_source(
+            knowledge_source=WorkIQKnowledgeSource(
+                name=workiq_source_name,
+                description="Microsoft 365 workplace context for the signed-in user.",
+            )
+        )
+
+        knowledge_base = KnowledgeBase(
+            name=kb_name,
+            description="Multi-source knowledge base combining indexed company documents and Work IQ.",
+            models=[
+                KnowledgeBaseAzureOpenAIModel(
+                    azure_open_ai_parameters=AzureOpenAIVectorizerParameters(
+                        resource_url=openai_endpoint,
+                        deployment_name=openai_model_deployment,
+                        model_name=openai_model_name,
+                    )
+                )
+            ],
+            knowledge_sources=[
+                KnowledgeSourceReference(name="hrdocs"),
+                KnowledgeSourceReference(name="healthdocs"),
+                KnowledgeSourceReference(name=workiq_source_name),
+            ],
+            retrieval_reasoning_effort=KnowledgeRetrievalLowReasoningEffort(),
+            output_mode=KnowledgeRetrievalOutputMode.ANSWER_SYNTHESIS,
+            retrieval_instructions=(
+                "Use Work IQ for workplace context such as emails, chats, events, meetings, and documents. "
+                "Use the search indexes for HR and health policy documents."
+            ),
+        )
+        await index_client.create_or_update_knowledge_base(knowledge_base=knowledge_base)
+        print(f"Created Work IQ knowledge source and knowledge base: {kb_name}")
+
+
+def parse_args() -> argparse.Namespace:
+    """Parse optional knowledge-base provisioning features."""
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--include-workiq",
+        action="store_true",
+        help="Create the Work IQ knowledge source and multi-source knowledge base.",
+    )
+    return parser.parse_args()
+
+
+async def main_async(include_workiq: bool = False) -> int:
     """Run index creation for all demo indexes."""
     endpoint = os.environ["AZURE_AI_SEARCH_SERVICE_ENDPOINT"]
     openai_endpoint = os.environ.get("AZURE_OPENAI_ENDPOINT", "")
     openai_model_deployment = os.environ.get("AZURE_AI_MODEL_DEPLOYMENT_NAME", "")
+    openai_model_name = os.environ.get("AZURE_OPENAI_CHATGPT_MODEL_NAME", openai_model_deployment)
     data_dir = Path("data/index-data")
 
     if not data_dir.exists():
@@ -161,65 +224,77 @@ async def main_async() -> int:
 
     credential = AzureDeveloperCliCredential(tenant_id=os.environ["AZURE_TENANT_ID"])
 
-    # Check if knowledge base already exists — skip if so
+    create_shared_resources = True
     async with SearchIndexClient(endpoint=endpoint, credential=credential) as index_client:
         try:
             await index_client.get_knowledge_base("contoso-company-kb")
             print("Knowledge base 'contoso-company-kb' already exists. Skipping index creation.")
-            await credential.close()
-            return 0
+            create_shared_resources = False
         except ResourceNotFoundError:
             pass
 
-    indexes = [
-        ("hrdocs", data_dir / "hrdocs-exported.jsonl"),
-        ("healthdocs", data_dir / "healthdocs-exported.jsonl"),
-    ]
+    if create_shared_resources:
+        indexes = [
+            ("hrdocs", data_dir / "hrdocs-exported.jsonl"),
+            ("healthdocs", data_dir / "healthdocs-exported.jsonl"),
+        ]
 
-    for index_name, records_path in indexes:
-        if not records_path.exists():
-            print(f"Records file not found for {index_name}: {records_path}")
-            return 1
+        for index_name, records_path in indexes:
+            if not records_path.exists():
+                print(f"Records file not found for {index_name}: {records_path}")
+                return 1
 
-        print(f"Creating index: {index_name}")
-        uploaded = await create_index_and_upload(
+            print(f"Creating index: {index_name}")
+            uploaded = await create_index_and_upload(
+                endpoint=endpoint,
+                credential=credential,
+                index_name=index_name,
+                index_schema_path=index_schema_path,
+                records_path=records_path,
+                openai_endpoint=openai_endpoint,
+            )
+            print(f"Uploaded {uploaded} docs to {index_name}")
+            await asyncio.sleep(2)
+
+        print("\nCreating knowledge base...")
+        await create_knowledge_base(
             endpoint=endpoint,
             credential=credential,
-            index_name=index_name,
-            index_schema_path=index_schema_path,
-            records_path=records_path,
+            kb_name="contoso-company-kb",
+            kb_description=(
+                "Contains internal HR documents about employee benefits and health/wellness programs."
+            ),
+            knowledge_source_configs=[
+                (
+                    "hrdocs",
+                    "HR policy and company documents including the employee handbook, PerksPlus wellness "
+                    "reimbursement program, company overview, vacation perks, employee recognition, "
+                    "role library (job descriptions), workplace safety, and performance reviews.",
+                ),
+                (
+                    "healthdocs",
+                    "Health insurance plan documents including medical plan details (Northwind Health Plus "
+                    "and Northwind Standard), coverage options (PPO, HMO, HDHP), copays, deductibles, "
+                    "coinsurance, prescription drug coverage, dental, vision, mental health services, "
+                    "workers compensation, and preventive care benefits.",
+                ),
+            ],
             openai_endpoint=openai_endpoint,
+            openai_model_deployment=openai_model_deployment,
         )
-        print(f"Uploaded {uploaded} docs to {index_name}")
-        await asyncio.sleep(2)
 
-    # Create a single knowledge base with both indexes as knowledge sources
-    print("\nCreating knowledge base...")
-    await create_knowledge_base(
-        endpoint=endpoint,
-        credential=credential,
-        kb_name="contoso-company-kb",
-        kb_description=(
-            "Contains internal HR documents about employee benefits and health/wellness programs."
-        ),
-        knowledge_source_configs=[
-            (
-                "hrdocs",
-                "HR policy and company documents including the employee handbook, PerksPlus wellness "
-                "reimbursement program, company overview, vacation perks, employee recognition, "
-                "role library (job descriptions), workplace safety, and performance reviews.",
+    if include_workiq:
+        await create_workiq_knowledge_base(
+            endpoint=endpoint,
+            credential=credential,
+            kb_name=os.environ.get(
+                "AZURE_AI_SEARCH_WORKIQ_KNOWLEDGE_BASE_NAME",
+                "multisource-workiq-knowledge-base",
             ),
-            (
-                "healthdocs",
-                "Health insurance plan documents including medical plan details (Northwind Health Plus "
-                "and Northwind Standard), coverage options (PPO, HMO, HDHP), copays, deductibles, "
-                "coinsurance, prescription drug coverage, dental, vision, mental health services, "
-                "workers compensation, and preventive care benefits.",
-            ),
-        ],
-        openai_endpoint=openai_endpoint,
-        openai_model_deployment=openai_model_deployment,
-    )
+            openai_endpoint=openai_endpoint,
+            openai_model_deployment=openai_model_deployment,
+            openai_model_name=openai_model_name,
+        )
 
     print("Search index and knowledge base creation complete.")
 
@@ -229,4 +304,5 @@ async def main_async() -> int:
 
 
 if __name__ == "__main__":
-    raise SystemExit(asyncio.run(main_async()))
+    args = parse_args()
+    raise SystemExit(asyncio.run(main_async(include_workiq=args.include_workiq)))

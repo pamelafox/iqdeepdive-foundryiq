@@ -18,7 +18,10 @@ AGENT_NAMES = (
     "agent-foundry-iq-api",
     "agent-foundry-iq-toolbox",
 )
-WORK_IQ_AGENT_NAME = "agent-workiq-toolbox"
+FOUNDRY_USER_AGENT_NAMES = (
+    "agent-foundryiq-workiq-toolbox",
+    "agent-workiq-toolbox",
+)
 
 
 def get_agent_principal_id(agent_name: str) -> str | None:
@@ -63,6 +66,7 @@ def assign_foundry_user(
     client: AuthorizationManagementClient,
     subscription_id: str,
     scope: str,
+    agent_name: str,
     principal_id: str,
 ) -> None:
     """Assign Foundry User at one scope, or reuse the existing assignment."""
@@ -82,7 +86,7 @@ def assign_foundry_user(
         role_definition_id=role_definition_id,
     )
 
-    print(f"Assigning Foundry User to {WORK_IQ_AGENT_NAME} at {scope}...")
+    print(f"Assigning Foundry User to {agent_name} at {scope}...")
     try:
         client.role_assignments.create(scope, assignment_name, parameters)
     except HttpResponseError as error:
@@ -115,16 +119,19 @@ def main() -> int:
             assign_search_access(client, scope, agent_name, principal_id)
 
     project_id = os.getenv("AZURE_AI_PROJECT_ID")
-    work_iq_principal_id = get_agent_principal_id(WORK_IQ_AGENT_NAME)
-    if project_id and work_iq_principal_id:
+    if project_id:
         account_scope = project_id.rsplit("/projects/", 1)[0]
-        for foundry_scope in (account_scope, project_id):
-            assign_foundry_user(
-                client,
-                subscription_id,
-                foundry_scope,
-                work_iq_principal_id,
-            )
+        for agent_name in FOUNDRY_USER_AGENT_NAMES:
+            principal_id = get_agent_principal_id(agent_name)
+            if principal_id:
+                for foundry_scope in (account_scope, project_id):
+                    assign_foundry_user(
+                        client,
+                        subscription_id,
+                        foundry_scope,
+                        agent_name,
+                        principal_id,
+                    )
 
     print("Postdeploy setup complete.")
     return 0
