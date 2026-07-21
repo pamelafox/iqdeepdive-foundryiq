@@ -12,11 +12,11 @@ else
 fi
 
 echo "Creating the Foundry toolbox..."
-uv run --locked python infra/create-toolbox.py
+uv run --locked python infra/create-toolbox-foundryiq.py
 
 if [ "${ENABLE_WORK_IQ_KB_TOOLBOX:-false}" = "true" ]; then
     echo "Creating the Work IQ knowledge-base toolbox..."
-    uv run --locked python infra/create-toolbox.py \
+    uv run --locked python infra/create-toolbox-foundryiq.py \
         --toolbox-name "${CUSTOM_FOUNDRY_WORKIQ_KB_TOOLBOX_NAME:-workiq-knowledge-tools}" \
         --knowledge-base-name "${AZURE_AI_SEARCH_WORKIQ_KNOWLEDGE_BASE_NAME:-multisource-workiq-knowledge-base}" \
         --connection-name "${AZURE_AI_SEARCH_WORKIQ_KB_MCP_CONNECTION_NAME:-workiq-kb-mcp-connection}" \
@@ -32,12 +32,12 @@ if [ -n "${FABRIC_CAPACITY_ID:-}" ] || [ -n "${FABRIC_WORKSPACE_ID:-}" ]; then
     uv run --locked python infra/create-fabric-data-agent.py
 
     echo "Creating the Fabric IQ toolbox..."
-    uv run --locked python infra/create-fabric-toolbox.py
+    uv run --locked python infra/create-toolbox-fabriciq-ontology.py
 fi
 
 if [ "${ENABLE_WORK_IQ:-false}" = "true" ]; then
     echo "Creating the Work IQ Entra application, connection, and toolbox..."
-    uv run --locked python infra/create-workiq-toolbox.py --apply
+    uv run --locked python infra/create-toolbox-workiq.py --apply
 fi
 
 echo "Postprovision setup complete."

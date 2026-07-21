@@ -11,14 +11,14 @@ if ($env:ENABLE_WORK_IQ_KB_TOOLBOX -eq "true") {
 }
 
 Write-Host "Creating the Foundry toolbox..."
-uv run --locked python infra/create-toolbox.py
+uv run --locked python infra/create-toolbox-foundryiq.py
 
 if ($env:ENABLE_WORK_IQ_KB_TOOLBOX -eq "true") {
     Write-Host "Creating the Work IQ knowledge-base toolbox..."
     $toolboxName = if ($env:CUSTOM_FOUNDRY_WORKIQ_KB_TOOLBOX_NAME) { $env:CUSTOM_FOUNDRY_WORKIQ_KB_TOOLBOX_NAME } else { "workiq-knowledge-tools" }
     $knowledgeBaseName = if ($env:AZURE_AI_SEARCH_WORKIQ_KNOWLEDGE_BASE_NAME) { $env:AZURE_AI_SEARCH_WORKIQ_KNOWLEDGE_BASE_NAME } else { "multisource-workiq-knowledge-base" }
     $connectionName = if ($env:AZURE_AI_SEARCH_WORKIQ_KB_MCP_CONNECTION_NAME) { $env:AZURE_AI_SEARCH_WORKIQ_KB_MCP_CONNECTION_NAME } else { "workiq-kb-mcp-connection" }
-    uv run --locked python infra/create-toolbox.py `
+    uv run --locked python infra/create-toolbox-foundryiq.py `
         --toolbox-name $toolboxName `
         --knowledge-base-name $knowledgeBaseName `
         --connection-name $connectionName `
@@ -34,12 +34,12 @@ if ($env:FABRIC_CAPACITY_ID -or $env:FABRIC_WORKSPACE_ID) {
     uv run --locked python infra/create-fabric-data-agent.py
 
     Write-Host "Creating the Fabric IQ toolbox..."
-    uv run --locked python infra/create-fabric-toolbox.py
+    uv run --locked python infra/create-toolbox-fabriciq-ontology.py
 }
 
 if ($env:ENABLE_WORK_IQ -eq "true") {
     Write-Host "Creating the Work IQ Entra application, connection, and toolbox..."
-    uv run --locked python infra/create-workiq-toolbox.py --apply
+    uv run --locked python infra/create-toolbox-workiq.py --apply
 }
 
 Write-Host "Postprovision setup complete."

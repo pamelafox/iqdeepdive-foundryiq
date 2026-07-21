@@ -39,14 +39,14 @@ knowledge-base MCP URL so Toolbox emits the user's Search-scoped query-source au
 - `infra/core/`: reusable Bicep modules for Foundry, Search, storage, monitoring, and Fabric resources.
 - `infra/create-search-indexes.py`: restores sample indexes and creates the hosted agent's
   `contoso-company-kb`.
-- `infra/create-toolbox.py`: creates and promotes the toolbox version after the knowledge base exists. It uses the
+- `infra/create-toolbox-foundryiq.py`: creates and promotes the toolbox version after the knowledge base exists. It uses the
   dedicated `kb-mcp-connection` remote-tool project connection by default and accepts overrides for the Work IQ
   knowledge-base toolbox.
 - `infra/create-fabric-data-agent.py`: creates or reuses an ontology-backed Fabric Data Agent, publishes its
   staging configuration through the Fabric REST API, and writes its ID and MCP endpoint to `.env`.
-- `infra/create-fabric-toolbox.py`: creates the `user-entra-token` Fabric ontology connection after the ontology
+- `infra/create-toolbox-fabriciq-ontology.py`: creates the `user-entra-token` Fabric ontology connection after the ontology
   exists, then creates and promotes the separate Fabric IQ toolbox.
-- `infra/create-workiq-toolbox.py`: opt-in Graph SDK setup for the Work IQ service principal, single-tenant Entra
+- `infra/create-toolbox-workiq.py`: opt-in Graph SDK setup for the Work IQ service principal, single-tenant Entra
   app, delegated consent, OAuth2 `RemoteA2A` connection, callback URI, and separate Work IQ toolbox.
 - `infra/create-lakehouse.py`: creates optional Fabric lakehouse and ontology resources.
 - `infra/setup-env.py`: writes generated Azure outputs to the local `.env` used by notebooks and local agent runs.
