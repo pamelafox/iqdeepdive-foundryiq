@@ -5,9 +5,10 @@ This script:
 1. Creates a lakehouse in Microsoft Fabric using the Microsoft Fabric API SDK
 2. Downloads the Contoso DIY sample data (product_data.json, reference_data.json) from GitHub
 3. Flattens and enriches the data with inventory and supplier relationships
-4. Uploads CSVs to OneLake (lakehouse Files section)
-5. Loads CSVs as Delta tables using the Load Table API
-6. Creates or updates a Fabric IQ ontology bound to the lakehouse tables
+4. Generates deterministic product reviews and feature-level sentiment relationships
+5. Uploads CSVs to OneLake (lakehouse Files section)
+6. Loads CSVs as Delta tables using the Load Table API
+7. Creates or updates a Fabric IQ ontology bound to the operational tables
 
 Environment variables (from .env):
   FABRIC_WORKSPACE_ID  - Existing Fabric workspace GUID
@@ -126,9 +127,72 @@ SUPPLIER_NAMES = (
     "Metro DIY Distribution",
 )
 
-# Logging
+REVIEW_FEATURES = (
+    ("battery-life", "Battery life"),
+    ("build-quality", "Build quality"),
+    ("durability", "Durability"),
+    ("ease-of-use", "Ease of use"),
+    ("noise-level", "Noise level"),
+    ("safety", "Safety"),
+    ("weight", "Weight"),
+    ("value", "Value"),
+)
+
+REVIEWERS = (
+    "Avery Johnson",
+    "Cameron Lee",
+    "Casey Morgan",
+    "Dakota Brown",
+    "Emerson Davis",
+    "Harper Wilson",
+    "Jamie Garcia",
+    "Jordan Martinez",
+    "Kai Anderson",
+    "Logan Thomas",
+    "Morgan Taylor",
+    "Parker Moore",
+    "Quinn Jackson",
+    "Reese Martin",
+    "Riley Thompson",
+    "Robin White",
+    "Sage Harris",
+    "Taylor Clark",
+)
+
+FEATURE_SENTIMENT_TEXT = {
+    "positive": {
+        "battery-life": "the battery lasts through every project",
+        "build-quality": "the construction feels solid and carefully finished",
+        "durability": "it has held up well under regular use",
+        "ease-of-use": "the controls are intuitive and easy to use",
+        "noise-level": "it runs more quietly than I expected",
+        "safety": "the safety features are clear and reassuring",
+        "weight": "the balanced weight makes it comfortable to handle",
+        "value": "the performance is excellent for the price",
+    },
+    "neutral": {
+        "battery-life": "the battery life is about average",
+        "build-quality": "the construction is typical for this product type",
+        "durability": "it has handled normal use so far",
+        "ease-of-use": "the controls take a little time to learn",
+        "noise-level": "the noise level is about what I expected",
+        "safety": "the standard safety features are included",
+        "weight": "the weight is typical for this kind of product",
+        "value": "the price matches the overall performance",
+    },
+    "negative": {
+        "battery-life": "the battery runs down sooner than expected",
+        "build-quality": "some parts feel less sturdy than they should",
+        "durability": "it showed wear after only a few projects",
+        "ease-of-use": "the controls are awkward and confusing",
+        "noise-level": "it is uncomfortably loud during use",
+        "safety": "the safety controls are difficult to engage",
+        "weight": "it becomes too heavy during longer jobs",
+        "value": "the performance does not justify the price",
+    },
+}
+
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-LOG_FILE = os.path.join(SCRIPT_DIR, "create-lakehouse.log")
 REPO_ROOT = os.path.dirname(SCRIPT_DIR)
 
 
@@ -140,13 +204,9 @@ def update_root_env(values: dict):
 
 
 def log_message(message: str):
-    """Write message to log file and stdout with timestamp."""
-    os.makedirs(os.path.dirname(LOG_FILE), exist_ok=True)
+    """Write a timestamped message to stdout."""
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    line = f"[{timestamp}] {message}"
-    print(line)
-    with open(LOG_FILE, "a", encoding="utf-8") as f:
-        f.write(line + "\n")
+    print(f"[{timestamp}] {message}")
 
 
 def get_ontology_ui_url(workspace_id: str, ontology_id: str) -> str:
@@ -490,6 +550,100 @@ def generate_product_suppliers(
                 }
             )
     return rows
+
+
+def generate_product_reviews(products: list[dict]) -> tuple[list[dict], ...]:
+    """Generate deterministic review, reviewer, feature, and mention tables."""
+    reviewers = [
+        {
+            "reviewer_id": f"REVIEWER-{index:03d}",
+            "display_name": name,
+            "member_since": f"{2018 + (index % 7)}-{1 + (index % 12):02d}-01T00:00:00Z",
+        }
+        for index, name in enumerate(REVIEWERS, start=1)
+    ]
+    features = [
+        {"feature_id": feature_id, "feature_name": feature_name}
+        for feature_id, feature_name in REVIEW_FEATURES
+    ]
+    feature_ids = [feature_id for feature_id, _ in REVIEW_FEATURES]
+    sentiments = ("positive", "positive", "neutral", "negative")
+    reviews = []
+    mentions = []
+    review_date = datetime(2026, 1, 1)
+
+    for product_index, product in enumerate(
+        sorted(products, key=lambda row: row["sku"])[:20]
+    ):
+        for review_number in range(3):
+            review_index = product_index * 3 + review_number
+            review_id = f"REVIEW-{review_index + 1:04d}"
+            reviewer = reviewers[review_index % len(reviewers)]
+            selected_features = (
+                feature_ids[review_index % len(feature_ids)],
+                feature_ids[(review_index * 3 + 2) % len(feature_ids)],
+            )
+            selected_sentiments = (
+                sentiments[stable_int(review_id, selected_features[0], modulo=4)],
+                sentiments[stable_int(review_id, selected_features[1], modulo=4)],
+            )
+            evidence = [
+                FEATURE_SENTIMENT_TEXT[sentiment][feature_id]
+                for feature_id, sentiment in zip(
+                    selected_features, selected_sentiments, strict=True
+                )
+            ]
+            rating = max(
+                1,
+                min(
+                    5,
+                    3
+                    + selected_sentiments.count("positive")
+                    - selected_sentiments.count("negative"),
+                ),
+            )
+            reviews.append(
+                {
+                    "review_id": review_id,
+                    "sku": product["sku"],
+                    "reviewer_id": reviewer["reviewer_id"],
+                    "rating": rating,
+                    "title": f"Review of {product['name']}",
+                    "review_text": f"I found that {evidence[0]}, while {evidence[1]}.",
+                    "reviewed_at": (
+                        review_date + timedelta(days=review_index * 3)
+                    ).strftime("%Y-%m-%dT00:00:00Z"),
+                    "verified_purchase": review_index % 5 != 0,
+                }
+            )
+            for mention_number, (feature_id, sentiment, excerpt) in enumerate(
+                zip(
+                    selected_features,
+                    selected_sentiments,
+                    evidence,
+                    strict=True,
+                ),
+                start=1,
+            ):
+                mentions.append(
+                    {
+                        "mention_id": f"{review_id}-M{mention_number}",
+                        "review_id": review_id,
+                        "feature_id": feature_id,
+                        "sentiment": sentiment,
+                        "confidence": round(
+                            0.82
+                            + stable_int(
+                                review_id, feature_id, "confidence", modulo=18
+                            )
+                            / 100,
+                            2,
+                        ),
+                        "evidence_excerpt": excerpt,
+                    }
+                )
+
+    return reviewers, reviews, features, mentions
 
 
 def validate_retail_graph(
@@ -1116,6 +1270,9 @@ def main():
         inventory = generate_inventory(products, stores)
         suppliers = generate_suppliers()
         product_suppliers = generate_product_suppliers(products, suppliers)
+        reviewers, reviews, features, review_feature_mentions = (
+            generate_product_reviews(products)
+        )
         validate_retail_graph(
             products, stores, inventory, suppliers, product_suppliers
         )
@@ -1129,6 +1286,13 @@ def main():
             "product_suppliers": (
                 product_suppliers,
                 "product_suppliers.csv",
+            ),
+            "reviewers": (reviewers, "reviewers.csv"),
+            "reviews": (reviews, "reviews.csv"),
+            "features": (features, "features.csv"),
+            "review_feature_mentions": (
+                review_feature_mentions,
+                "review_feature_mentions.csv",
             ),
             "year_weights": (flatten_year_weights(reference_data), "year_weights.csv"),
         }

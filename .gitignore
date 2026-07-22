@@ -23,4 +23,5 @@ __pycache__/
 
 # Fabric setup logs
 fabric_setup_*.log
+infra/create-lakehouse.log
 .azure

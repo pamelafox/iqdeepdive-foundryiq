@@ -1,4 +1,4 @@
-"""Create and publish a Fabric data agent backed by the Contoso ontology."""
+"""Create and publish a Fabric data agent backed by Contoso ontology and Graph."""
 
 import os
 import time
@@ -130,11 +130,61 @@ def get_or_create_data_agent(
     raise RuntimeError(f"Fabric data agent '{name}' was created but could not be found.")
 
 
+def list_staging_datasources(client: httpx.Client, base_url: str) -> list[dict]:
+    """List data sources in the data agent's staging configuration."""
+    response = request(
+        client,
+        "GET",
+        f"{base_url}/staging/datasources",
+        expected_statuses={httpx.codes.OK},
+    )
+    return response.json().get("value", [])
+
+
+def add_fabric_item_datasource(
+    client: httpx.Client,
+    base_url: str,
+    workspace_id: str,
+    item_id: str,
+    display_name: str,
+) -> None:
+    """Add a Fabric item to staging unless that exact item is already present."""
+    existing_item_ids = {
+        source.get("itemReference", {}).get("itemId")
+        for source in list_staging_datasources(client, base_url)
+    }
+    if item_id in existing_item_ids:
+        print(f"Reusing {display_name} data source {item_id}.")
+        return
+
+    print(f"Adding {display_name} {item_id} as a data source...")
+    response = request(
+        client,
+        "POST",
+        f"{base_url}/staging/datasources",
+        expected_statuses={
+            httpx.codes.OK,
+            httpx.codes.CREATED,
+            httpx.codes.ACCEPTED,
+        },
+        json={
+            "type": "FabricItem",
+            "itemReference": {
+                "referenceType": "ById",
+                "itemId": item_id,
+                "workspaceId": workspace_id,
+            },
+        },
+    )
+    wait_for_operation(client, response)
+
+
 def main() -> None:
-    """Create or update the ontology-backed data agent and publish its staging state."""
+    """Create or update the ontology and Graph-backed data agent and publish it."""
     tenant_id = require_env("FABRIC_TENANT_ID")
     workspace_id = require_env("FABRIC_WORKSPACE_ID")
     ontology_id = require_env("FABRIC_ONTOLOGY_ID")
+    graph_id = require_env("FABRIC_GRAPH_ID")
     data_agent_name = os.getenv("FABRIC_DATA_AGENT_NAME", "ContosoDIYDataAgent")
 
     token = get_fabric_token(tenant_id)
@@ -154,37 +204,29 @@ def main() -> None:
             expected_statuses={httpx.codes.OK, httpx.codes.ACCEPTED},
             json={
                 "aiInstructions": (
-                    "Answer questions about Contoso DIY products, inventory, stores, "
-                    "categories, and suppliers using the configured ontology."
+                    "Use the ontology for Contoso DIY product catalog, category, supplier, "
+                    "store, and current inventory facts. Use the review graph for reviewers, "
+                    "reviews, product features, feature-level sentiment, and relationship "
+                    "traversals. Join results across sources by product SKU when a question "
+                    "requires both operational and customer-review context."
                 )
             },
         )
         wait_for_operation(client, settings_response)
 
-        print(f"Adding ontology {ontology_id} as the data source...")
-        datasource_response = request(
+        add_fabric_item_datasource(
             client,
-            "POST",
-            f"{base_url}/staging/datasources",
-            expected_statuses={
-                httpx.codes.OK,
-                httpx.codes.CREATED,
-                httpx.codes.ACCEPTED,
-                httpx.codes.CONFLICT,
-            },
-            json={
-                "type": "FabricItem",
-                "itemReference": {
-                    "referenceType": "ById",
-                    "itemId": ontology_id,
-                    "workspaceId": workspace_id,
-                },
-            },
+            base_url,
+            workspace_id,
+            ontology_id,
+            "ontology",
         )
-        wait_for_operation(
+        add_fabric_item_datasource(
             client,
-            datasource_response,
-            ignored_error_codes={"AlreadyAddedDataSource"},
+            base_url,
+            workspace_id,
+            graph_id,
+            "review graph",
         )
 
         print("Publishing the Fabric data agent...")
@@ -193,7 +235,11 @@ def main() -> None:
             "POST",
             f"{base_url}/staging/publish",
             expected_statuses={httpx.codes.OK, httpx.codes.CREATED, httpx.codes.ACCEPTED},
-            json={"publishedDescription": "Contoso DIY ontology data agent"},
+            json={
+                "publishedDescription": (
+                    "Contoso DIY product operations and review intelligence data agent"
+                )
+            },
         )
         wait_for_operation(client, publish_response)
 

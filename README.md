@@ -21,6 +21,8 @@ flowchart LR
   toolbox --> toolboxagent[Hosted toolbox HR agent]
   search --> notebooks[Six notebook-created KBs]
   fabric --> notebooks
+  fabric --> reviewgraph[Fabric product review graph]
+  reviewgraph --> fabricdataagent
   fabric --> fabricdataagent[Fabric Data Agent]
   fabricdataagent -->|Published MCP endpoint| clients[MCP clients]
   fabric --> fabrictoolbox[Fabric IQ toolbox]
@@ -44,6 +46,9 @@ a Foundry toolbox containing the knowledge base, web search, and code interprete
 agent uses a separate toolbox connected directly to the Fabric IQ ontology used by
 `foundryiq-fabriciq-ontology.ipynb`. It passes through the invoking user's Entra identity and does not use a
 notebook-created knowledge base.
+The Fabric Data Agent combines that ontology with a Fabric Graph Model over synthetic product reviews. The
+ontology owns product, category, supplier, store, and inventory facts; the graph owns reviewers, reviews,
+features, and feature-level sentiment. Product SKU is the shared key between the complementary sources.
 The fifth agent uses a separate OAuth2 `RemoteA2A` connection and toolbox to query the signed-in user's
 Microsoft 365 work context through Work IQ.
 The sixth agent uses a Foundry toolbox connected to a provisioned multi-source Work IQ knowledge base.
@@ -77,15 +82,22 @@ azd up
 
 `azd up` provisions the resources, writes the generated local settings to `.env`, restores the
 sample HR and health indexes, creates the low- and minimal-reasoning HR knowledge bases and Foundry toolbox,
-prepares Fabric when enabled, creates and publishes an ontology-backed Fabric Data Agent, creates a
+prepares Fabric when enabled, creates the Fabric product review graph, publishes an ontology- and
+Graph-backed Fabric Data Agent, creates a
 separate `fabric-ontology-tools` toolbox, and deploys all six agents. The Fabric Data Agent's ID and
 MCP endpoint are written to `FABRIC_DATA_AGENT_ID` and `FABRIC_DATA_AGENT_MCP_URL`. The Fabric toolbox
 targets the generated ontology endpoint exactly and uses the `fabric-ontology-connection` remote-tool
-connection. No Azure resources are included in this repository.
+connection. The Graph Model's ID and portal link are written to `FABRIC_GRAPH_ID` and
+`FABRIC_GRAPH_UI_URL`.
+
+The review graph is built from deterministic synthetic data loaded into the same lakehouse. Its sentiment,
+confidence, and evidence values are fixture ground truth generated during provisioning; the sample does not
+claim to extract sentiment with AI at runtime. Saving and refreshing the Graph Model ingests those tables into
+Fabric's queryable graph representation.
 
 Set `DEPLOY_FABRIC_CAPACITY=false` before `azd up` to use an existing Fabric workspace or skip the
-Fabric portions. Set `FABRIC_WORKSPACE_ID` and `FABRIC_ONTOLOGY_ID` in `.env` before running parts 3,
-5, and 6 when you manage Fabric separately.
+Fabric portions. Set `FABRIC_WORKSPACE_ID`, `FABRIC_ONTOLOGY_ID`, and `FABRIC_GRAPH_ID` in `.env`
+before running parts 3, 5, and 6 when you manage Fabric separately.
 
 After Fabric setup completes, open `notebooks/query-fabric-data-agent.ipynb` to inspect the tools exposed by the
 published Fabric Data Agent MCP endpoint and make a tool call. The notebook reads `FABRIC_TENANT_ID` and

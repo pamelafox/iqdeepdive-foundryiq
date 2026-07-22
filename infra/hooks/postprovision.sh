@@ -28,6 +28,9 @@ if [ -n "${FABRIC_CAPACITY_ID:-}" ] || [ -n "${FABRIC_WORKSPACE_ID:-}" ]; then
     echo "Creating the optional Fabric lakehouse and ontology..."
     uv run --locked python infra/create-lakehouse.py
 
+    echo "Creating the Fabric product review graph..."
+    uv run --locked python infra/create-fabric-graph.py
+
     echo "Creating the Fabric data agent..."
     uv run --locked python infra/create-fabric-data-agent.py
 

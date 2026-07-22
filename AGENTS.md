@@ -45,8 +45,10 @@ knowledge-base MCP URL so Toolbox emits the user's Search-scoped query-source au
 - `infra/create-toolbox-foundryiq.py`: creates and promotes the toolbox version after the knowledge base exists. It uses the
   dedicated `kb-mcp-connection` remote-tool project connection by default and accepts overrides for the Work IQ
   knowledge-base toolbox.
-- `infra/create-fabric-data-agent.py`: creates or reuses an ontology-backed Fabric Data Agent, publishes its
-  staging configuration through the Fabric REST API, and writes its ID and MCP endpoint to `.env`.
+- `infra/create-fabric-graph.py`: creates or updates the lakehouse-backed product review Graph Model, refreshes
+  its queryable data, and writes its ID and Fabric portal URL to `.env`.
+- `infra/create-fabric-data-agent.py`: creates or reuses an ontology- and Graph-backed Fabric Data Agent,
+  publishes its staging configuration through the Fabric REST API, and writes its ID and MCP endpoint to `.env`.
 - `infra/create-toolbox-fabriciq-ontology.py`: creates the `user-entra-token` Fabric ontology connection after the ontology
   exists, then creates and promotes the separate Fabric IQ toolbox.
 - `infra/create-toolbox-workiq.py`: opt-in Graph SDK setup for the Work IQ service principal, single-tenant Entra
